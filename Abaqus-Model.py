@@ -5,11 +5,12 @@ from abaqusConstants import *
 from caeModules import *
 from driverUtils import executeOnCaeStartup
 executeOnCaeStartup()
-#丸粒基本参数设置
-#半径
-R=0.3
-#丸粒速度
+#The model is in millimeter units.
+# Shot radius:mm
+R=0.1
+# Shot velocity:mm/s
 V=65000
+# Target material model
 s = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
     sheetSize=200.0)
 g, v, d, c = s.geometry, s.vertices, s.dimensions, s.constraints
@@ -178,8 +179,7 @@ pickedEdges =(e[42], e[43], e[44], e[45])
 p.PartitionCellByExtrudeEdge(line=e[35], cells=pickedCells, edges=pickedEdges, 
     sense=FORWARD)
 session.viewports['Viewport: 1'].view.setValues(session.views['Front'])
-
-#丸粒模型
+# Shot model
 s1 = mdb.models['Model-1'].ConstrainedSketch(name='__profile__', 
     sheetSize=200.0)
 g, v, d, c = s1.geometry, s1.vertices, s1.dimensions, s1.constraints
@@ -219,7 +219,7 @@ e1, v1, d2 = p.edges, p.vertices, p.datums
 p.PartitionCellByPlaneNormalToEdge(edge=e1[1], cells=pickedCells, 
     point=p.InterestingPoint(edge=e1[1], rule=MIDDLE))
 session.viewports['Viewport: 1'].view.setValues(session.views['Back'])
-#材料赋予
+# Material
 session.viewports['Viewport: 1'].partDisplay.setValues(sectionAssignments=ON, 
     engineeringFeatures=ON)
 session.viewports['Viewport: 1'].partDisplay.geometryOptions.setValues(
@@ -269,15 +269,15 @@ session.viewports['Viewport: 1'].assemblyDisplay.setValues(
 a = mdb.models['Model-1'].rootAssembly
 a.DatumCsysByDefault(CARTESIAN)
 p = mdb.models['Model-1'].parts['Part-bacai']
-#多丸粒装配
+# Assembly of multiple shots
 a.Instance(name='Part-bacai-1', part=p, dependent=ON)
-n=1        
-j=10*n      
-i=1
+n=1         # Coverage
+j=10*n      # Total shot number
+i=1         # Number of shots in the assembly
 while  i<j+1:
-				n1 = random.uniform(-0.3,0.3)      
-				n2 = random.uniform(-0.3,0.3)
-				n3 = -i*R
+				n1 = random.uniform(-0.3,0.3)# Distribution in the X-direction 
+				n2 = random.uniform(-0.3,0.3)# Distribution in the Y-direction
+				n3 = -i*R                # Distribution in the Z-direction
 				p = mdb.models['Model-1'].parts['Part-ball']
 				a.Instance(name='Part-ball-%d' % i, part=p, dependent=ON)   
 				a = mdb.models['Model-1'].rootAssembly
@@ -286,8 +286,10 @@ while  i<j+1:
 session.viewports['Viewport: 1'].view.setValues(session.views['Bottom'])
 session.viewports['Viewport: 1'].assemblyDisplay.setValues(
     adaptiveMeshConstraints=ON)
+# Numerical simulation time
+ts = (j+1)*R/V
 mdb.models['Model-1'].ExplicitDynamicsStep(name='Step-1', previous='Initial',
-    timePeriod=0.0058)
+    timePeriod=ts)
 session.viewports['Viewport: 1'].assemblyDisplay.setValues(step='Step-1')
 mdb.models['Model-1'].fieldOutputRequests['F-Output-1'].setValues(variables=(
     'S', 'PE', 'PEEQ', 'LE', 'U', 'V', 'A', 'E',
@@ -306,7 +308,7 @@ a = mdb.models['Model-1'].rootAssembly
 s1 = a.instances['Part-bacai-1'].faces
 side1Faces1 = s1.getSequenceFromMask(mask=('[#ff000000 #20 ]', ), )
 region2=a.Surface(side1Faces=side1Faces1, name='s_Surf-jiechu')
-#丸粒接触设定
+# Define contact
 i=1
 a = mdb.models['Model-1'].rootAssembly
 while  i<j+1:
@@ -319,7 +321,6 @@ while  i<j+1:
 		interactionProperty='IntProp-contact', initialClearance=OMIT, datumAxis=None, 
 		clearanceRegion=None)
 	i +=1
-
 session.viewports['Viewport: 1'].view.setValues(session.views['Front'])
 session.viewports['Viewport: 1'].view.setValues(nearPlane=101.015, 
 farPlane=170.715, width=6.43051, height=3.12066, viewOffsetX=0.987603, 
@@ -498,7 +499,7 @@ session.viewports['Viewport: 1'].view.setValues(nearPlane=7.48218,
 farPlane=10.5178, width=5.51457, height=2.68543, viewOffsetX=0.964942, 
 viewOffsetY=-0.359192)
 p = mdb.models['Model-1'].parts['Part-ball']
-#ball边界约束
+# Shot boundary conditions
 i=1
 a = mdb.models['Model-1'].rootAssembly
 while  i<j+1:
@@ -539,7 +540,8 @@ mdb.models['Model-1'].steps['Step-1'].Restart(numberIntervals=20, overlay=ON,
     timeMarks=OFF)
 session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=ON, bcs=ON, 
     predefinedFields=ON, connectors=ON, adaptiveMeshConstraints=OFF)
-#速度场
+# Pellet velocity setting 
+# Direction: Z-axis
 i=1
 a = mdb.models['Model-1'].rootAssembly
 while  i<j+1:
@@ -557,7 +559,7 @@ while  i<j+1:
         field='', distributionType=MAGNITUDE, velocity1=0.0, velocity2=0.0, 
         velocity3=V, omega=0.0)
     i +=1
-#set集合0-500um
+# Create element set
 p = mdb.models['Model-1'].parts['Part-bacai']
 e = p.elements
 elements = e.getSequenceFromMask(mask=(
