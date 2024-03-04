@@ -1,4 +1,5 @@
 # coding:utf-8
+# Statement：This script works for Abaqus2016, other versions may have some unknown errors
 import random
 from abaqus import *
 from abaqusConstants import *
